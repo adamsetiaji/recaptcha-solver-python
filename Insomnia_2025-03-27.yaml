@@ -1,0 +1,419 @@
+type: collection.insomnia.rest/5.0
+name: Scratch Pad
+meta:
+  id: wrk_scratchpad
+  created: 1732023097215
+  modified: 1732023097215
+collection:
+  - name: USERS
+    meta:
+      id: fld_06b0ab1675e34cc7beb97c4d88c8c399
+      created: 1739876186634
+      modified: 1739876186634
+      sortKey: -1739876186634
+    children:
+      - url: "{{ _.ws_url }}"
+        name: Create User
+        meta:
+          id: ws-req_5211a648234f4abfbbaaffd96b9455b0
+          created: 1739878310204
+          modified: 1739878329623
+          sortKey: -1739878310204
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: Get All Users
+        meta:
+          id: ws-req_89d41061c38c40d281954bcd640321f9
+          created: 1739878345031
+          modified: 1739878345031
+          sortKey: -1739878205224
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: Get User by Email
+        meta:
+          id: ws-req_a0ab30a8ef634d739e7f71bb6a3e606e
+          created: 1739878359739
+          modified: 1739878359739
+          sortKey: -1739878152734
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: Update User
+        meta:
+          id: ws-req_ce58fd712be740cc9ee132bdbf4fe88f
+          created: 1739878374012
+          modified: 1739878374012
+          sortKey: -1739878126489
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: Delete User
+        meta:
+          id: ws-req_03a6bc6e37304e1490cd418fe678be63
+          created: 1739878399180
+          modified: 1739878399180
+          sortKey: -1739878113366.5
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+  - name: RECAPTCHAS
+    meta:
+      id: fld_38a8ca4108754432a68fab9ae2b81f15
+      created: 1739876199622
+      modified: 1739876199622
+      sortKey: -1739876199622
+    children:
+      - url: "{{ _.ws_url }}"
+        name: CREATE_RECAPTCHA
+        meta:
+          id: ws-req_6288c596362b40c48c7d10a667931044
+          created: 1739878100244
+          modified: 1739878178492
+          sortKey: -1739878100244
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: GET_ALL_RECAPTCHA
+        meta:
+          id: ws-req_0f07a1eef840483b9a7509f26ca84319
+          created: 1739878158961
+          modified: 1739878158961
+          sortKey: -1739877190502
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: GET_BY_SITE_KEY
+        meta:
+          id: ws-req_62bf013278804917a496723d0ed4c8e5
+          created: 1739878231964
+          modified: 1739878231964
+          sortKey: -1739876735631
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: UPDATE_RECAPTCHA
+        meta:
+          id: ws-req_3122afc39dab42a2b06edc1bfce16bf3
+          created: 1739878252877
+          modified: 1739878255145
+          sortKey: -1739876735531
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: DELETE_RECAPTCHA
+        meta:
+          id: ws-req_ac2717dd4baf45fb92eebec83de998a5
+          created: 1739878275947
+          modified: 1739878275947
+          sortKey: -1739876508145.5
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: Get Token Recaptcha
+        meta:
+          id: ws-req_0a78406ff8624d97911d142aa140fd84
+          created: 1739878498265
+          modified: 1739878498265
+          sortKey: -1739876963066.5
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+  - name: SURFEBE
+    meta:
+      id: fld_ff26ce7643244361a91f6034a71f465d
+      created: 1739876214687
+      modified: 1739876214687
+      sortKey: -1739876214687
+    children:
+      - url: "{{ _.ws_url }}"
+        name: REGISTER_SURFEBE
+        meta:
+          id: ws-req_77e06c2e0e664d888736f8dec72f573a
+          created: 1739876280760
+          modified: 1739877868082
+          sortKey: -1739876280760
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: LOGIN_SURFEBE
+        meta:
+          id: ws-req_6fd6f644aa3243149546eef189c401d7
+          created: 1739877906832
+          modified: 1739877906832
+          sortKey: -1739592342523
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: CONFIRM_CAPTCHA
+        meta:
+          id: ws-req_581c285f5fcc41939219e50df435ab23
+          created: 1739877917868
+          modified: 1739877917868
+          sortKey: -1739450373404.5
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: PROFILE_SURFEBE
+        meta:
+          id: ws-req_e280f2458b9442e9a9f5d1054d0a0033
+          created: 1739877935665
+          modified: 1739877935665
+          sortKey: -1739379388845.25
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: GET_TASKS
+        meta:
+          id: ws-req_f1946ed0dc7e416bae0b4f841b002d94
+          created: 1739877973685
+          modified: 1740123182088
+          sortKey: -1739343896565.625
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+      - url: "{{ _.ws_url }}"
+        name: COMPLETE_VISIT
+        meta:
+          id: ws-req_cde702204bdb4c9181b1187dce1fd475
+          created: 1739878024939
+          modified: 1739878024939
+          sortKey: -1739326150425.8125
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+  - name: 2FA
+    meta:
+      id: fld_50c93e7ed2804d97905c2d07edc6f887
+      created: 1739879870854
+      modified: 1739879870854
+      sortKey: -1739879870854
+    children:
+      - url: "{{ _.ws_url }}"
+        name: GENERATE OTP
+        meta:
+          id: ws-req_f09278c1cb824465acec9c3f2e091541
+          created: 1739879875268
+          modified: 1739879930296
+          sortKey: -1739879875268
+        settings:
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+        headers:
+          - name: User-Agent
+            value: insomnia/10.3.1
+  - url: http://192.168.1.22:3000/getTaskResult
+    name: getTaskResult
+    meta:
+      id: req_428b9e8caac346f58030f6c1eaa784ce
+      created: 1740123607209
+      modified: 1743073084347
+      isPrivate: false
+      sortKey: -1740123607209
+    method: POST
+    body:
+      mimeType: application/json
+      text: >-
+        {
+            "clientKey": "123456789",
+            "taskId": "{% response 'body', 'req_c507aff08adb453fab09ecd105ecf83c', 'b64::JC50YXNrSWQ=::46b', 'never', 60 %}"
+        }
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/10.3.1
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: http://192.168.1.22:3000/createTask
+    name: createTask
+    meta:
+      id: req_c507aff08adb453fab09ecd105ecf83c
+      created: 1742383043333
+      modified: 1743070829659
+      isPrivate: false
+      sortKey: -1740123607309
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+            "clientKey": "123456789"
+        }
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/10.3.1
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_99d30891da4bdcebc63947a8fc17f076de878684
+    created: 1732023101080
+    modified: 1739881617953
+  cookies:
+    - key: PHPSESSID
+      value: k374vrp4ubp54jcrroube1pf47
+      domain: surfe.be
+      path: /
+      secure: true
+      httpOnly: true
+      hostOnly: true
+      creation: 2025-02-18T12:26:38.843Z
+      lastAccessed: 2025-02-18T12:26:38.843Z
+      sameSite: none
+      id: 79173640-eee6-49ae-b66a-d77e56b716e3
+    - key: _identity
+      value: 28e6afaa8fabe30093dcbccb7dd86a595739786c9f0bbb9e48cef8418ff50be4a%3A2%3A%7Bi%3A0%3Bs%3A9%3A%22_identity%22%3Bi%3A1%3Bs%3A53%3A%22%5B3014323%2C%227plLTOtV5wXrn5Ycniq0qaGzIqqzgoWm%22%2C31536000%5D%22%3B%7D
+      maxAge: 31536000
+      domain: surfe.be
+      path: /
+      httpOnly: true
+      hostOnly: true
+      creation: 2025-02-18T12:26:38.844Z
+      lastAccessed: 2025-02-18T12:26:57.953Z
+      sameSite: lax
+      id: 000837ea-5ca3-4ad9-a693-d6266e564679
+environments:
+  name: Base Environment
+  meta:
+    id: env_99d30891da4bdcebc63947a8fc17f076de878684
+    created: 1732023101015
+    modified: 1742111003453
+    isPrivate: false
+  data:
+    ws_url: https://x69fw97p-6969.asse.devtunnels.ms/
+    email: damfinime@gmail.com
