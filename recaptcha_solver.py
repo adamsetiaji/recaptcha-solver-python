@@ -1,6 +1,11 @@
 import os
 import uuid
 import time
+import subprocess
+import signal
+import sys
+import atexit
+import psutil
 from datetime import datetime, timedelta
 from threading import Thread
 from queue import Queue
@@ -10,6 +15,11 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from playwright.sync_api import sync_playwright
 
+# Global variables for processes and cleanup
+xvfb_process = None
+vnc_process = None
+all_child_processes = []
+
 # Load environment variables
 load_dotenv()
 
@@ -17,6 +27,7 @@ app = Flask(__name__)
 
 # Configuration from environment variables
 PORT = int(os.getenv('PORT', '3000'))
+PORT_VNC = int(os.getenv('PORT_VNC', '5900'))
 VALID_API_KEYS = os.getenv('VALID_API_KEYS', '123456789').split(',')
 DEFAULT_RECAPTCHA_URL = os.getenv('DEFAULT_RECAPTCHA_URL', 'https://www.google.com/recaptcha/api2/demo')
 DEFAULT_RECAPTCHA_SITEKEY = os.getenv('DEFAULT_RECAPTCHA_SITEKEY', '6Le-wvkSAAAAAPBMRTvw0Q4Muexq9bi0DJwx_mJ-')
@@ -29,6 +40,203 @@ PAGE_LOAD_TIMEOUT = int(os.getenv('PAGE_LOAD_TIMEOUT', '30000'))
 
 # Store for tasks
 task_store: Dict[str, Dict[str, Any]] = {}
+
+# Start Xvfb virtual display
+def start_xvfb():
+    # Check if this is the reloader process in Flask
+    is_reloader = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    
+    # Check if Xvfb is already running on display :99
+    if os.path.exists("/tmp/.X99-lock"):
+        print("Xvfb is already running on display :99, reusing it")
+        os.environ['DISPLAY'] = ':99'
+        return None
+    
+    # Only start Xvfb in the main process or if it's not already running
+    if not is_reloader or not os.path.exists("/tmp/.X99-lock"):
+        # Start a new Xvfb instance with stderr redirected to /dev/null to suppress warnings
+        print("Starting Xvfb virtual display...")
+        xvfb_process = subprocess.Popen(
+            "Xvfb :99 -screen 0 1920x1080x24 2>/dev/null", 
+            shell=True
+        )
+        os.environ['DISPLAY'] = ':99'
+        print("Xvfb started, DISPLAY set to :99")
+        
+        # Register cleanup function
+        def cleanup_xvfb():
+            if xvfb_process:
+                print("Terminating Xvfb...")
+                try:
+                    xvfb_process.terminate()
+                    xvfb_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    xvfb_process.kill()
+                print("Xvfb terminated")
+        
+        atexit.register(cleanup_xvfb)
+        return xvfb_process
+    
+    return None
+
+# Start VNC server
+def start_vnc_server():
+    # Check if VNC is already running on the specified port
+    try:
+        proc = subprocess.run(
+            f"lsof -i :{PORT_VNC} -t", 
+            shell=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE
+        )
+        if proc.stdout and proc.stdout.decode().strip():
+            print(f"VNC server already running on port {PORT_VNC}, reusing it")
+            return None
+    except Exception:
+        pass
+    
+    # Start VNC server
+    try:
+        # First make sure x11vnc is installed
+        install_proc = subprocess.run(
+            "which x11vnc || sudo apt-get update && sudo apt-get install -y x11vnc",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        
+        if install_proc.returncode != 0:
+            print(f"Error installing x11vnc: {install_proc.stderr.decode()}")
+            return None
+        
+        print("Starting VNC server...")
+        # Run VNC server with options:
+        # -display :99 - connect to Xvfb display 99
+        # -forever - keep running after client disconnects
+        # -shared - allow multiple clients
+        # -rfbport - specify VNC port
+        # -nopw - no password
+        # -q - quiet output
+        # IMPORTANT: Do NOT run in background (-bg) so we can track the process
+        vnc_cmd = f"x11vnc -display :99 -forever -shared -rfbport {PORT_VNC} -nopw"
+        print(f"Running VNC command: {vnc_cmd}")
+        
+        # Run x11vnc in foreground but in a separate process
+        vnc_process = subprocess.Popen(
+            vnc_cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        
+        # Give VNC server a moment to start
+        time.sleep(2)
+        
+        # Check if VNC process is actually running
+        if vnc_process.poll() is not None:
+            # Process has terminated - read error
+            stdout, stderr = vnc_process.communicate()
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            print(f"VNC failed to start: {error_msg}")
+            return None
+        
+        print(f"VNC server started on port {PORT_VNC}")
+        
+        # Register cleanup function
+        def cleanup_vnc():
+            if vnc_process:
+                print("Terminating VNC server...")
+                try:
+                    vnc_process.terminate()
+                    vnc_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    vnc_process.kill()
+                print("VNC server terminated")
+        
+        atexit.register(cleanup_vnc)
+        return vnc_process
+    except Exception as e:
+        print(f"Error starting VNC server: {e}")
+        return None
+
+# Function to kill all child processes on exit
+def cleanup_all_processes():
+    print("\nCleaning up all processes...")
+    
+    # Kill all tracked child processes
+    for proc in all_child_processes:
+        try:
+            proc.terminate()
+            print(f"Terminated process PID: {proc.pid}")
+        except Exception as e:
+            print(f"Error terminating process: {e}")
+    
+    # Kill Xvfb if it's running
+    if xvfb_process:
+        try:
+            xvfb_process.terminate()
+            print("Terminated Xvfb process")
+        except Exception as e:
+            print(f"Error terminating Xvfb: {e}")
+    
+    # Find and kill any processes still using our ports
+    try:
+        for port in [PORT, PORT_VNC]:
+            # Try using lsof (works on most Unix systems)
+            proc = subprocess.run(
+                f"lsof -i :{port} -t", 
+                shell=True, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE
+            )
+            if proc.stdout:
+                pids = proc.stdout.decode().strip().split('\n')
+                for pid in pids:
+                    if pid.strip():
+                        print(f"Killing process {pid} using port {port}")
+                        try:
+                            os.kill(int(pid), signal.SIGKILL)  # Using SIGKILL for immediate termination
+                        except Exception as e:
+                            print(f"Error killing process {pid}: {e}")
+    except Exception as e:
+        print(f"Error cleaning up port processes: {e}")
+    
+    # Force kill any remaining zombie processes
+    try:
+        current_process = psutil.Process()
+        children = current_process.children(recursive=True)
+        for child in children:
+            try:
+                child.kill()  # Using kill() instead of terminate() for immediate termination
+                print(f"Terminated child process PID: {child.pid}")
+            except Exception as e:
+                print(f"Error terminating child process: {e}")
+    except Exception as e:
+        print(f"Error killing child processes: {e}")
+    
+    print("Cleanup complete")
+
+# Register cleanup function for normal exit
+atexit.register(cleanup_all_processes)
+
+# Handle signals for graceful shutdown
+def signal_handler(sig, frame):
+    print('\nReceived signal to terminate')
+    cleanup_all_processes()
+    # Force exit - do not rely on other cleanup code
+    os._exit(0)  # Using os._exit to force immediate exit without further cleanup
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+signal.signal(signal.SIGTERM, signal_handler)  # Termination signal
+
+# Check if we need to start Xvfb
+DEFAULT_HEADLESS = os.getenv('DEFAULT_HEADLESS', 'false').lower() == 'true'
+if not DEFAULT_HEADLESS:
+    xvfb_process = start_xvfb()
+    # Start VNC server if Xvfb is running
+    if os.environ.get('DISPLAY') == ':99':
+        vnc_process = start_vnc_server()
 
 # Request Queue implementation
 class RequestQueue:
@@ -56,14 +264,26 @@ class RequestQueue:
             time.sleep(0.1)
     
     def _execute_task(self, task_id, func, args, kwargs):
+        start_time = time.time()
         try:
             result = func(*args, **kwargs)
+            elapsed_time = time.time() - start_time
             if result.get('success') == 1:
-                update_task_status(task_id, "ready", {"gRecaptchaResponse": result.get('gRecaptchaResponse')})
+                update_task_status(task_id, "ready", {
+                    "gRecaptchaResponse": result.get('gRecaptchaResponse'),
+                    "solveTime": round(elapsed_time, 2)
+                })
             else:
-                update_task_status(task_id, "failed", {"error": result.get('error', 'Unknown error')})
+                update_task_status(task_id, "failed", {
+                    "error": result.get('error', 'Unknown error'),
+                    "solveTime": round(elapsed_time, 2)
+                })
         except Exception as e:
-            update_task_status(task_id, "failed", {"error": str(e)})
+            elapsed_time = time.time() - start_time
+            update_task_status(task_id, "failed", {
+                "error": str(e),
+                "solveTime": round(elapsed_time, 2)
+            })
         finally:
             self.processing -= 1
 
@@ -165,6 +385,8 @@ class RecaptchaSolver:
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         )
         
+        # Browser process tracking not working reliably in this environment
+        # Just return the browser without attempting to track it
         return browser
         
     def _prepare_extension_files(self, extension_path):
@@ -526,7 +748,8 @@ def create_task():
         task_store[task_id] = {
             'status': 'processing',
             'created': datetime.now(),
-            'clientKey': request.json.get('clientKey')
+            'clientKey': request.json.get('clientKey'),
+            'startTime': time.time()
         }
         
         # Process task in background
@@ -542,7 +765,8 @@ def create_task():
     except Exception as e:
         return jsonify({
             'success': 0,
-            'message': str(e)
+            'message': str(e),
+            'elapsedTime': 0
         }), 500
 
 @app.route('/createTaskUrl', methods=['POST'])
@@ -565,7 +789,8 @@ def create_task_url():
         task_store[task_id] = {
             'status': 'processing',
             'created': datetime.now(),
-            'clientKey': data.get('clientKey')
+            'clientKey': data.get('clientKey'),
+            'startTime': time.time()
         }
         
         # Process task in background
@@ -614,46 +839,239 @@ def get_task_result():
                 'message': "Task expired"
             }), 404
         
+        # Calculate elapsed time
+        elapsed_time = 0
+        if 'startTime' in task:
+            elapsed_time = round(time.time() - task['startTime'], 2)
+        
         # Return result based on status
         if task['status'] == 'processing':
             return jsonify({
                 'success': 1,
-                'message': "processing"
+                'message': "processing",
+                'elapsedTime': elapsed_time
             })
         
         elif task['status'] == 'ready':
             return jsonify({
                 'success': 1,
                 'message': "ready",
-                'gRecaptchaResponse': task.get('gRecaptchaResponse')
+                'gRecaptchaResponse': task.get('gRecaptchaResponse'),
+                'solveTime': task.get('solveTime', elapsed_time)
             })
         
         elif task['status'] == 'failed':
             return jsonify({
                 'success': 0,
                 'message': "failed",
-                'error': task.get('error', 'Unknown error')
+                'error': task.get('error', 'Unknown error'),
+                'solveTime': task.get('solveTime', elapsed_time)
             })
         
         else:
             return jsonify({
                 'success': 0,
-                'message': "Unknown task status"
+                'message': "Unknown task status",
+                'elapsedTime': elapsed_time
             }), 500
     
     except Exception as e:
         return jsonify({
             'success': 0,
-            'message': str(e)
+            'message': str(e),
+            'elapsedTime': 0
         }), 500
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    # Check if VNC server is running
+    vnc_running = False
+    try:
+        proc = subprocess.run(
+            f"lsof -i :{PORT_VNC} -t", 
+            shell=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE
+        )
+        vnc_running = bool(proc.stdout and proc.stdout.decode().strip())
+    except:
+        pass
+    
+    # Get active task count by status
+    processing_count = 0
+    ready_count = 0
+    failed_count = 0
+    
+    for task in task_store.values():
+        if task['status'] == 'processing':
+            processing_count += 1
+        elif task['status'] == 'ready':
+            ready_count += 1
+        elif task['status'] == 'failed':
+            failed_count += 1
+    
     return jsonify({
         'status': 'ok',
         'taskCount': len(task_store),
-        'queueLength': request_queue.queue.qsize()
+        'processingTasks': processing_count,
+        'readyTasks': ready_count,
+        'failedTasks': failed_count,
+        'queueLength': request_queue.queue.qsize(),
+        'vncRunning': vnc_running,
+        'vncPort': PORT_VNC,
+        'serverTime': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
+
+# Debug VNC endpoint
+@app.route('/debug/vnc', methods=['GET'])
+def debug_vnc():
+    results = {}
+    
+    # 1. Check if Xvfb is running
+    try:
+        xvfb_proc = subprocess.run(
+            "ps aux | grep 'Xvfb :99' | grep -v grep",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        results['xvfb_running'] = xvfb_proc.returncode == 0
+        results['xvfb_output'] = xvfb_proc.stdout.decode() if xvfb_proc.stdout else ""
+    except Exception as e:
+        results['xvfb_error'] = str(e)
+    
+    # 2. Check DISPLAY environment variable
+    results['display_env'] = os.environ.get('DISPLAY', 'Not set')
+    
+    # 3. Check if x11vnc is installed
+    try:
+        x11vnc_proc = subprocess.run(
+            "which x11vnc",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        results['x11vnc_installed'] = x11vnc_proc.returncode == 0
+        results['x11vnc_path'] = x11vnc_proc.stdout.decode().strip() if x11vnc_proc.stdout else "Not found"
+    except Exception as e:
+        results['x11vnc_error'] = str(e)
+    
+    # 4. Check if VNC is running on the port
+    try:
+        vnc_proc = subprocess.run(
+            f"lsof -i :{PORT_VNC}",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        results['vnc_port_active'] = vnc_proc.returncode == 0
+        results['vnc_port_info'] = vnc_proc.stdout.decode() if vnc_proc.stdout else "No process using VNC port"
+    except Exception as e:
+        results['vnc_port_error'] = str(e)
+    
+    # 5. Try to start VNC directly with output capture
+    try:
+        test_cmd = f"x11vnc -display :99 -rfbport {PORT_VNC+1} -once -nopw"
+        test_proc = subprocess.run(
+            test_cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5  # Only try for 5 seconds
+        )
+        results['test_cmd'] = test_cmd
+        results['test_returncode'] = test_proc.returncode
+        results['test_stdout'] = test_proc.stdout.decode() if test_proc.stdout else ""
+        results['test_stderr'] = test_proc.stderr.decode() if test_proc.stderr else ""
+    except subprocess.TimeoutExpired:
+        results['test_status'] = "VNC test command still running after timeout - this is good"
+    except Exception as e:
+        results['test_error'] = str(e)
+    
+    # 6. Start or restart VNC server
+    global vnc_process
+    try:
+        # Try to restart VNC
+        if vnc_process:
+            try:
+                vnc_process.terminate()
+                time.sleep(1)
+            except:
+                pass
+        
+        # Start fresh
+        results['restart_attempted'] = True
+        vnc_process = start_vnc_server()
+        results['restart_success'] = vnc_process is not None
+    except Exception as e:
+        results['restart_error'] = str(e)
+    
+    return jsonify(results)
+
+# Force restart VNC
+@app.route('/restart/vnc', methods=['GET'])
+def restart_vnc():
+    global vnc_process
+    
+    try:
+        # Kill any existing VNC processes
+        proc = subprocess.run(
+            f"lsof -i :{PORT_VNC} -t", 
+            shell=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE
+        )
+        if proc.stdout:
+            pids = proc.stdout.decode().strip().split('\n')
+            for pid in pids:
+                if pid.strip():
+                    try:
+                        os.kill(int(pid), signal.SIGKILL)
+                        print(f"Killed VNC process {pid}")
+                    except:
+                        pass
+        
+        # Wait a moment for processes to terminate
+        time.sleep(2)
+        
+        # Start a new VNC server
+        vnc_process = start_vnc_server()
+        
+        if vnc_process:
+            return jsonify({
+                'success': True,
+                'message': f"VNC server restarted successfully on port {PORT_VNC}"
+            })
+        else:
+            # Try with --no-auth option if regular start fails
+            print("Trying alternative VNC start method...")
+            alt_cmd = f"x11vnc -display :99 -forever -shared -rfbport {PORT_VNC} -nopw -no-auth"
+            vnc_process = subprocess.Popen(
+                alt_cmd,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            
+            time.sleep(2)
+            if vnc_process.poll() is None:  # Still running
+                return jsonify({
+                    'success': True,
+                    'message': f"VNC server restarted with alternative options on port {PORT_VNC}"
+                })
+            else:
+                stdout, stderr = vnc_process.communicate()
+                return jsonify({
+                    'success': False,
+                    'message': "Failed to restart VNC server",
+                    'error': stderr.decode() if stderr else "Unknown error"
+                }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': "Error restarting VNC server",
+            'error': str(e)
+        }), 500
 
 # Task cleanup
 def cleanup_tasks():
@@ -670,6 +1088,24 @@ def cleanup_tasks():
             
             if cleaned_count > 0:
                 print(f"Cleaned up {cleaned_count} expired tasks")
+            
+            # Check if VNC is running, if not try to restart it
+            if not DEFAULT_HEADLESS and os.environ.get('DISPLAY') == ':99':
+                try:
+                    proc = subprocess.run(
+                        f"lsof -i :{PORT_VNC} -t", 
+                        shell=True, 
+                        stdout=subprocess.PIPE, 
+                        stderr=subprocess.PIPE
+                    )
+                    vnc_running = bool(proc.stdout and proc.stdout.decode().strip())
+                    
+                    if not vnc_running:
+                        print("VNC server not detected, attempting to restart...")
+                        global vnc_process
+                        vnc_process = start_vnc_server()
+                except Exception as vnc_error:
+                    print(f"Error checking/restarting VNC: {vnc_error}")
                 
             time.sleep(15 * 60)  # Run every 15 minutes
         except Exception as e:
@@ -680,6 +1116,21 @@ cleanup_thread = Thread(target=cleanup_tasks, daemon=True)
 cleanup_thread.start()
 
 if __name__ == '__main__':
-    print(f"Server running on port {PORT}")
-    print(f"Health check available at: http://0.0.0.0:{PORT}/health")
-    app.run(host='0.0.0.0', port=PORT, debug=os.getenv('FLASK_ENV') == 'development')
+    try:
+        print(f"Server running on port {PORT}")
+        print(f"VNC server accessible on port {PORT_VNC}")
+        print(f"Health check available at: http://0.0.0.0:{PORT}/health")
+        print(f"VNC debug available at: http://0.0.0.0:{PORT}/debug/vnc")
+        print(f"VNC restart available at: http://0.0.0.0:{PORT}/restart/vnc")
+        print("Press Ctrl+C once to exit cleanly")
+        
+        # Start Flask application - using production mode to avoid reloader issues
+        app.run(host='0.0.0.0', port=PORT, debug=False)
+    except KeyboardInterrupt:
+        print("\nKeyboard interrupt received, shutting down...")
+        cleanup_all_processes()
+        os._exit(0)  # Use os._exit for immediate termination
+    except Exception as e:
+        print(f"\nError in main: {e}")
+        cleanup_all_processes()
+        os._exit(1)  # Use os._exit for immediate termination with error code
