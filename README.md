@@ -179,7 +179,21 @@ Response:
 
 3. **Instal Dependensi Sistem untuk Playwright** (diperlukan di beberapa distro Linux):
    ```
-   sudo apt install -y libwoff1 libopus0 libwebp6 libwebpdemux2 libenchant1c2a libgudev-1.0-0 libsecret-1-0 libhyphen0 libgdk-pixbuf2.0-0 libegl1 libnotify4 libxslt1.1 libevent-2.1-7 libgles2 libvpx6 libxcomposite1 libatk1.0-0 libatk-bridge2.0-0 libepoxy0 libgtk-3-0 libharfbuzz-icu0 libgstreamer-gl1.0-0
+   sudo apt-get install libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatspi2.0-0t64 xvfb x11vnc fluxbox python3-pip python3.12-venv -y
+
+sudo ufw allow 3000/tcp
+sudo ufw allow 5900/tcp
+sudo ufw status
+sudo ufw reload
+
+python3 -m venv venv
+source venv/bin/activate
+
+pip install flask python-dotenv psutil playwright
+
+python -m playwright install chromium
+****
+   
    ```
 
 4. **Buat .env File**:
