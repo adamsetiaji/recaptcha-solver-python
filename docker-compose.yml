@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  recaptcha-solver:
+    build: .
+    ports:
+      - "3000:3000"
+      - "5900:5900"
+    environment:
+      - PORT=3000
+      - PORT_VNC=5900
+      - FLASK_ENV=production
+      - VALID_API_KEYS=123456789,abcdefghi
+      - DEFAULT_RECAPTCHA_URL=https://surfe.be
+      - DEFAULT_RECAPTCHA_SITEKEY=6LfMEAwTAAAAAK5MkDsHyDg-SE7wisIDM1-5mDQs
+      - DEFAULT_HEADLESS=false
+      - DEFAULT_INCOGNITO=true
+      - MAX_PARALLEL_TASKS=5
+      - RETRY_COUNT=3
+      - RETRY_DELAY=5000
+      - PAGE_LOAD_TIMEOUT=30000
+    volumes:
+      - .:/app
