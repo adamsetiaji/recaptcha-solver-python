@@ -1,5 +1,14 @@
 
 
+# LINUX
+```
+sudo apt update && sudo apt upgrade -y
+```
+
+```
+sudo apt-get install libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatspi2.0-0t64 xvfb x11vnc fluxbox python3-pip python3.12-venv -y
+```
+
 # Install Docker
 ## Set up Docker's apt repository
 ```
@@ -19,50 +28,43 @@ sudo apt-get update
 ```
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 ```
-
-# Install Redis
 ```
-docker run -d --name redis-database -p 6379:6379 redis/redis-stack-server:latest
+snap install docker
 ```
-
-# Install Redis Insight
-```
-docker run -d --name redisinsight -p 5540:5540 redis/redisinsight:latest
-```
-# Allow Firewall
-```
-sudo ufw allow 5540/tcp
-sudo ufw allow 6379/tcp
-sudo ufw status
-```
-
 # Docker Command
-## List Image
+## Build & Down Image
 ```
-docker images
 docker-compose down
 docker-compose up -d --build
 ```
+
+## Logs Image
+```
+docker logs -f {NAMES}
+```
+
+
+## List Image Active
+```
+docker ps
+```
+
+## List Image
+```
+docker images
+```
+
 ## Stop & Remove Running Image
 ```
 docker stop {Image NAMES}
 docker rm {Image NAMES}
 ```
+
 ## Delete Image Permanent
 ```
 docker rmi {IMAGE ID}
 ```
 
-
-# LINUX
-```
-sudo apt update && sudo apt upgrade -y
-```
-
-
-```
-sudo apt-get install libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatspi2.0-0t64 xvfb x11vnc fluxbox python3-pip python3.12-venv -y
-```
 ```
 python3 -m venv venv
 source venv/bin/activate
