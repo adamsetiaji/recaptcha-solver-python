@@ -37,6 +37,7 @@ MAX_PARALLEL_TASKS = int(os.getenv('MAX_PARALLEL_TASKS', '5'))
 RETRY_COUNT = int(os.getenv('RETRY_COUNT', '3'))
 RETRY_DELAY = int(os.getenv('RETRY_DELAY', '5000'))
 PAGE_LOAD_TIMEOUT = int(os.getenv('PAGE_LOAD_TIMEOUT', '30000'))
+PROXY_SERVER = int(os.getenv('PROXY_SERVER', '5.79.73.131:13010'))
 
 # Store for tasks
 task_store: Dict[str, Dict[str, Any]] = {}
@@ -372,6 +373,7 @@ class RecaptchaSolver:
         browser = playwright.chromium.launch_persistent_context(
             user_data_dir="",  # Empty string creates a temporary profile
             headless=DEFAULT_HEADLESS,
+            proxy: { server: PROXY_SERVER},
             args=[
                 f'--disable-extensions-except={extension_path}',
                 f'--load-extension={extension_path}',
